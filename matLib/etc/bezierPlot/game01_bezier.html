@@ -1,0 +1,297 @@
+<!DOCTYPE HTML>
+<html lang="en-US">
+<head>
+	<meta charset="UTF-8">
+	<title></title>
+	<script type="text/javascript" src="./libs/enchant.js"></script>
+	<script type="text/javascript" src="./libs/gl-matrix-min.js"></script>
+	<script type="text/javascript" src="./libs/gl.enchant.js"></script>
+	<script type="text/javascript" src="./libs/primitive.gl.enchant.js"></script>
+	<script type="text/javascript">
+	//Javaのベジェ曲線を評価する。
+
+		var bearImage = './images/chara1.png';
+		var bgImage   = './images/enchant.png';
+		var dotImage = "./images/colors.png";
+		var dots = [];
+		var scaleReceiver = 1;
+		
+		var bezierArray =[ 
+[25.0, 92.0, -130.0]
+,[23.964919999999996, 83.713168, -118.06844]
+,[22.67136, 75.88454399999999, -106.85951999999997]
+,[21.136839999999996, 68.501936, -96.35187999999998]
+,[19.378880000000002, 61.553152, -86.52416000000001]
+,[17.415, 55.026, -77.35500000000002]
+,[15.262720000000002, 48.908288000000006, -68.82304]
+,[12.939559999999997, 43.187824, -60.90691999999999]
+,[10.463039999999998, 37.852416, -53.58527999999999]
+,[7.850679999999999, 32.889872000000004, -46.83676]
+,[5.120000000000003, 28.28800000000001, -40.64000000000002]
+,[2.2885200000000037, 24.034608000000002, -34.97364]
+,[-0.6262399999999939, 20.117504000000004, -29.81632000000001]
+,[-3.6067599999999977, 16.524496000000006, -25.14668]
+,[-6.635519999999996, 13.243391999999997, -20.94336]
+,[-9.695000000000004, 10.262, -17.185000000000002]
+,[-12.767680000000004, 7.5681279999999935, -13.850239999999992]
+,[-15.836040000000004, 5.149583999999999, -10.91772]
+,[-18.88256000000001, 2.9941759999999915, -8.366079999999986]
+,[-21.88972000000001, 1.0897119999999894, -6.173959999999985]
+,[-24.840000000000007, -0.5760000000000085, -4.31999999999999]
+,[-27.715880000000016, -2.015152000000005, -2.7828399999999966]
+,[-30.499840000000013, -3.2399360000000113, -1.5411199999999887]
+,[-33.17436000000002, -4.262544000000009, -0.5734799999999893]
+,[-35.72192000000002, -5.095168000000005, 0.14144000000000467]
+,[-38.125000000000014, -5.75, 0.625]
+,[-40.366080000000025, -6.239232000000004, 0.8985600000000016]
+,[-42.42764000000002, -6.575056000000003, 0.9834799999999984]
+,[-44.29216000000002, -6.769664000000002, 0.9011199999999988]
+,[-45.94212000000002, -6.835247999999996, 0.6728399999999937]
+,[-47.36000000000002, -6.783999999999996, 0.3199999999999914]
+,[-48.52828000000001, -6.628111999999996, -0.1360400000000066]
+,[-49.42944, -6.379775999999996, -0.6739200000000025]
+,[-50.045959999999994, -6.051183999999996, -1.2722800000000056]
+,[-50.36032, -5.654527999999994, -1.9097600000000128]
+,[-50.35499999999999, -5.201999999999993, -2.5650000000000084]
+,[-50.01247999999998, -4.7057919999999935, -3.2166400000000053]
+,[-49.31523999999999, -4.178095999999991, -3.843320000000011]
+,[-48.245759999999976, -3.63110399999999, -4.423680000000008]
+,[-46.78651999999997, -3.0770079999999895, -4.936360000000008]
+,[-44.91999999999995, -2.5279999999999903, -5.360000000000005]
+,[-42.62867999999995, -1.99627199999999, -5.673240000000005]
+,[-39.89503999999994, -1.49401599999999, -5.854720000000001]
+,[-36.70155999999992, -1.0334239999999904, -5.883079999999998]
+,[-33.03071999999992, -0.6266879999999913, -5.736959999999995]
+,[-28.8649999999999, -0.2859999999999928, -5.394999999999991]
+,[-24.186879999999878, -0.023551999999994577, -4.835839999999983]
+,[-18.97883999999986, 0.14846400000000298, -4.038119999999976]
+,[-13.223359999999841, 0.21785600000000027, -2.980479999999968]
+];
+
+		enchant();
+		window.onload = function(){
+    		game = new Game(512, 512);
+    		game.fps = 15;
+    		game.preload(bearImage, bgImage,dotImage);
+    		game.onload = function () {
+
+//----------Axis Create
+
+				//座標系を示すビューを生成
+				var Axis = enchant.Class.create({
+					
+					initialize: function(){
+						//座標軸クラス
+						var AxisBase = enchant.Class.create(enchant.gl.primitive.Cylinder,{
+							initialize: function(phi,theta,color){
+								enchant.gl.primitive.Cylinder.call(this,0.5,100,20);
+								this.x = 0;
+								this.y = 0;
+								this.z = 0;
+								//座標利用以外用いないので連続変換は想定しない
+								this.rotationApply(new Quat(0, 0, 1, Math.PI/180 *phi));
+								this.rotationApply(new Quat(1, 0, 0, Math.PI/180 *theta));
+								this.mesh.setBaseColor(color);
+								scene.addChild(this);
+								
+							}
+							
+						});
+						//軸の描画
+						var axisX = new AxisBase(-90, 0, '#ff3333');
+						var axisY = new AxisBase(0, 0,   '#33ffff');
+						var axisZ = new AxisBase(0, -90, '#00cc33');
+						
+						//座標軸方向を示す標識のクラス
+						var AxisArrow = enchant.Class.create(enchant.gl.primitive.Sphere, {
+							initialize: function(phi, theta, r){
+								enchant.gl.primitive.Sphere.call(this, 4);
+								this.x = r * Math.sin(Math.PI/180 * theta) * Math.cos(Math.PI/180 * phi);
+								this.y = r * Math.sin(Math.PI/180 * theta) * Math.sin(Math.PI/180 * phi);
+								this.z = r * Math.cos(Math.PI/180 * theta);
+								scene.addChild(this);
+							}
+						});
+						//標識の描画
+						var arrowX = new AxisArrow(0,90,100);
+						var arrowY = new AxisArrow(90, 90, 100)
+						var arrowZ = new AxisArrow(-90,0, 100);
+						
+						//標識にラベルを用意
+						var labelX = new Label("x");
+						labelX.x = worldToScreen(arrowX.x,arrowX.y, arrowX.z).x-10;
+						labelX.y = worldToScreen(arrowX.x,arrowX.y, arrowX.z).y-10;
+						labelX.color= "red";
+						labelX.font = "50px bold sans";
+						game.rootScene.addChild(labelX);
+						
+						labelX.addEventListener('enterframe', function(){
+							this.x = worldToScreen(arrowX.x,arrowX.y, arrowX.z).x-10;
+							this.y = worldToScreen(arrowX.x,arrowX.y, arrowX.z).y-10;							
+						})
+
+						var labelY = new Label("y");
+						labelY.x = worldToScreen(arrowY.x,arrowY.y, arrowY.z).x-10;
+						labelY.y = worldToScreen(arrowY.x,arrowY.y, arrowY.z).y-10;
+						labelY.color= "red";
+						labelY.font = "50px bold sans";
+						game.rootScene.addChild(labelY);
+						
+						labelY.addEventListener('enterframe', function(){
+							this.x = worldToScreen(arrowY.x,arrowY.y, arrowY.z).x-10;
+							this.y = worldToScreen(arrowY.x,arrowY.y, arrowY.z).y-10;							
+						})
+
+						var labelZ = new Label("z");
+						labelZ.x = worldToScreen(arrowZ.x,arrowZ.y, arrowZ.z).x-10;
+						labelZ.y = worldToScreen(arrowZ.x,arrowZ.y, arrowZ.z).y-10;
+						labelZ.color= "red";
+						labelZ.font = "50px bold sans";
+						game.rootScene.addChild(labelZ);
+						
+						labelZ.addEventListener('enterframe', function(){
+							this.x = worldToScreen(arrowZ.x,arrowZ.y, arrowZ.z).x-10;
+							this.y = worldToScreen(arrowZ.x,arrowZ.y, arrowZ.z).y-10;							
+						})
+	
+					}
+				})
+				
+				//----------3D -> 2D
+				function worldToScreen(x, y, z) {
+				    function mul(m1, m2) {
+				        return mat4.multiply(m1, m2, mat4.create());
+				    }
+				
+				    var game = enchant.Game.instance;
+				    var camera = game.currentScene3D.getCamera();
+
+				    // プロジェクション行列
+				    var pm = mat4.perspective(20, game.width / game.height, 1.0, 1000.0);
+
+				    // ビュー行列
+				    var vm = mat4.lookAt([ camera._x, camera._y, camera._z ], [
+				            camera._centerX, camera._centerY, camera._centerZ ], [
+				            camera._upVectorX, camera._upVectorY, camera._upVectorZ ]);
+
+				    var v = [ x, y, z, 1 ];
+				    var sc = mat4.multiplyVec4(mul(pm, vm), [ x, y, z, 1 ]);
+				
+				    var scX = (1 - (-sc[0] / sc[3])) * (game.width / 2);
+				    var scY = (1 - (sc[1] / sc[3])) * (game.height / 2);
+
+				    return {
+				        x : scX,
+				        y : scY
+				    };
+				}
+				
+
+//---------- 2D UI Layout
+				var slidac = new Sprite(20,20);
+				slidac.image = game.assets[dotImage];
+				slidac.frame = 0;
+				slidac.x = game.width-slidac.width-80;
+				slidac.y = 10;
+				
+				slidac.maxRange = game.width-slidac.width;
+				slidac.minRange = 0;
+				
+				scaleReceiver = slidac.maxRange/slidac.x
+				
+				game.rootScene.addChild(slidac)
+				slidac.addEventListener("touchstart", function(e){
+					this.x = e.x - this.width;
+					scaleReceiver = this.maxRange/this.x;
+				})
+				slidac.addEventListener("touchmove", function(e){
+					this.x = e.x - this.width;
+					scaleReceiver = this.maxRange/this.x;
+				})
+
+
+//----------GL object
+    			var scene = Scene3D();
+    			scene.backgroundColor = [0.1, 0.2, 0.25, 1];
+    			var camera = scene.getCamera();
+    			camera.x = 500;
+    			camera.y = 30;
+    			camera.z = 0;
+    			
+    			camera.centerX = 0;
+    			camera.centerY = 0;
+    			camera.centerZ = 0;
+    			
+    			var axis = new Axis();
+    			
+    			//制御点の描画
+    			var controlDot0 = new Billboard(3);
+    			controlDot0.x = 25;controlDot0.y = 92;controlDot0.z = -130;
+    			controlDot0.mesh.texture = new Texture(game.assets[dotImage]);
+    			controlDot0.mesh.texture.ambient = [1,1,1,1];
+    			scene.addChild(controlDot0);
+
+    			var controlDot1 = new Billboard(3);
+    			controlDot1.x = 10;controlDot1.y = -50;controlDot1.z = 75;
+    			controlDot1.mesh.texture = new Texture(game.assets[dotImage]);
+    			controlDot1.mesh.texture.ambient = [1,1,1,1];
+    			scene.addChild(controlDot1);
+    			
+    			var controlDot2 = new Billboard(3);
+    			controlDot2.x = -120;controlDot2.y = 4;controlDot2.z = -30;
+    			controlDot2.mesh.texture = new Texture(game.assets[dotImage]);
+    			controlDot2.mesh.texture.ambient = [1,1,1,1];
+    			scene.addChild(controlDot2);    			    			
+    			
+    			var controlDot3 = new Billboard(3);
+    			controlDot3.x = 0;controlDot3.y = 0;controlDot3.z = 0;
+    			controlDot3.mesh.texture = new Texture(game.assets[dotImage]);
+    			controlDot3.mesh.texture.ambient = [1,1,1,1];
+    			scene.addChild(controlDot3); 
+    			
+    			   			
+    			//ベジェ曲線の描画
+    			for(var i=0;i<bezierArray.length;i++){
+    				dots[i] = new Billboard(1);
+    				dots[i].mesh.texture.ambient = [1,1,1,1];
+    				dots[i].x = bezierArray[i][0];
+    				dots[i].y = bezierArray[i][1];
+    				dots[i].z = bezierArray[i][2];
+    				scene.addChild(dots[i]);
+    				
+    			}
+    			
+		    	//カメラ回転系操作
+		        var oldX = 0;
+				var r = 2;
+
+		        game.rootScene.addEventListener('enterframe', function() {
+		            	camera.x = Math.cos(r - 0.8) * 500 * scaleReceiver;
+        		    	camera.z = Math.sin(r - 0.8) * 500 * scaleReceiver;
+			
+    		    });
+	
+		        game.rootScene.addEventListener('touchstart', function(e) {
+		        	if(e.y > 50){
+        				oldX = e.x;
+        			}
+        		});
+		        game.rootScene.addEventListener('touchmove', function(e) {
+        			if(e.y > 50){
+            			r += (e.x - oldX) / 100 ;
+            			camera.x = Math.cos(r - 0.8) * 500 * scaleReceiver;
+            			camera.z = Math.sin(r - 0.8) * 500 * scaleReceiver;
+            			oldX = e.x;
+        			}
+		        });
+
+			}
+			game.start();
+			}
+		
+	</script>
+</head>
+<body>
+	
+</body>
+</html>
